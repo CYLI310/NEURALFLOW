@@ -5,10 +5,10 @@
 ## Features
 
 - **AI-Generated Levels:** Every level is uniquely crafted by an AI based on your input.
-- **Multiple Game Modes:** Choose between 2-lane, 4-lane, and a circular "OSU-style" mode.
+- **Multiple Game Modes:** Choose between 2-lane, 4-lane, and a circular OSU mode.
 - **Customizable Experience:** Tweak the scroll speed and select different AI models in the settings.
 - **Dynamic Visuals:** The game features a clean, retro-futuristic aesthetic with dynamic backgrounds and particle effects.
-- **Epilepsy Warning:** The game includes a warning for photosensitive players.
+- **Custom Musics (Beta)** Adding your favourit beats to the game, paired with matching levels
 
 ## Requirements
 
@@ -16,6 +16,7 @@
 - **Pygame:** A cross-platform set of Python modules designed for writing video games.
 - **Requests:** A simple, yet elegant HTTP library.
 - **Ollama:** An open-source tool for running large language models locally.
+- **Mistral or Gemma3** Though other LMs would work, those two models are tested and passed without errors.
 
 ## Ollama Installation
 
@@ -43,10 +44,13 @@ You can view the script source [here](https://github.com/ollama/ollama/blob/main
 
 ### Pulling a Model (Crucial Step!)
 
-After installing Ollama, you need to pull a model for the game to use. The game is pre-configured to use `mistral`, but you can use any model. Open your terminal or command prompt and run:
+After installing Ollama, you need to pull a model for the game to use. The game is pre-configured to use `mistral:7b` and `gemma3:270m`(Recommended for faster inference), but you can use any model. Open your terminal or command prompt and run:
 
 ```bash
-ollama pull mistral
+ollama pull mistral:7b
+```
+```bash
+ollama pull gemma3:270m
 ```
 
 ## How to Play
@@ -57,7 +61,7 @@ ollama pull mistral
     python main.py
     ```
 2.  **Navigate the menus:** Use the **UP** and **DOWN** arrow keys to navigate and **ENTER** to select.
-3.  **Enter a theme:** In the "NEW FLOW" menu, type any theme or vibe you can think of (e.g., "cyberpunk city," "oceanic tranquility," "cosmic horror").
+3.  **Enter a theme:** In the "NEW FLOW" menu, type any theme or vibe you can think of (e.g., "cyberpunk city," "oceanic tranquility," "cosmic horror", you can also specify the BPM of your preferred song).
 4.  **Play the game:**
     -   **2K Mode:** Use the **LEFT** and **RIGHT** arrow keys (or **A** and **D**) to hit the notes.
     -   **4K Mode:** Use the **D, F, J, K** keys to hit the notes.
