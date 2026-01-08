@@ -37,7 +37,15 @@ class LevelArchitect:
         except:
             self.available_models = ["mistral", "gemma3"] # Fallbacks
 
-    def generate_level(self, theme, mode):
+    def generate_level(self, theme, mode, difficulty):
+        diff_settings = {
+            "CHILL": {"bpm": "80-100", "speed": "4-6", "desc": "Relaxed and atmospheric"},
+            "FLOW": {"bpm": "100-130", "speed": "6-8", "desc": "Steady and rhythmic"},
+            "NEURAL": {"bpm": "130-160", "speed": "8-10", "desc": "Fast and intense"},
+            "OVERLOAD": {"bpm": "160-200", "speed": "10-14", "desc": "Extreme speed and complexity"}
+        }
+        ds = diff_settings.get(difficulty, diff_settings["FLOW"])
+
         default_level = {
             "palette": {"bg": [20, 20, 30], "lane": [50, 50, 50], "note": [0, 255, 255], "hit": [255, 255, 255]},
             "speed": 8,
@@ -60,12 +68,13 @@ class LevelArchitect:
         You are a music engine. Create a JSON config for a rhythm game level.
         Theme: '{theme}'
         Game Mode: '{mode}' ({mode_desc.get(mode)})
+        Difficulty: '{difficulty}' ({ds['desc']})
 
         Rules:
-        1. 'speed': integer 6-12. (For OSU, this is circle shrink speed)
-        2. 'bpm': integer 80-160.
+        1. 'speed': integer {ds['speed']}. (For OSU, this is circle shrink speed, do not make too much notes appear at a time in osu mode).
+        2. 'bpm': integer {ds['bpm']}.
         3. 'palette': RGB colors for bg, lane, note, hit.
-        4. 'introtext': A long-form cinematic introduction to this specific world (2-3 sentences).
+        4. 'introtext': A cinematic introduction to this specific world (2-3 sentences).
         5. 'flavor_text': A short atmospheric description.
 
         Output ONLY raw JSON:
@@ -74,8 +83,8 @@ class LevelArchitect:
             "speed": 8,
             "bpm": 128,
             "name": "World Name",
-            "introtext": "The great servers once hummed with life...",
-            "flavor_text": "Cryptic flavor here."
+            "introtext": "Description...",
+            "flavor_text": "Flavor..."
         }}
         """
         try:
@@ -147,6 +156,11 @@ class RhythmGame:
         self.modes = ["2K", "4K", "OSU"]
         self.mode_index = 0
         self.active_mode = "2K"
+        
+        # Difficulty selection
+        self.difficulties = ["CHILL", "FLOW", "NEURAL", "OVERLOAD"]
+        self.difficulty_index = 1
+        self.active_difficulty = "FLOW"
         
         # New: Model selection index
         self.model_index = 0
@@ -329,6 +343,10 @@ class RhythmGame:
                         if event.key == pygame.K_s:
                             self.trigger_shake(4, 10)
                             self.user_speed = (self.user_speed % 12) + 1 # Cycle 1-12
+                        if event.key == pygame.K_d:
+                            self.trigger_shake(4, 10)
+                            self.difficulty_index = (self.difficulty_index + 1) % len(self.difficulties)
+                            self.active_difficulty = self.difficulties[self.difficulty_index]
 
                 elif self.state == "DEATH":
                     if event.type == pygame.KEYDOWN:
@@ -373,7 +391,7 @@ class RhythmGame:
                 self.draw_input()
             elif self.state == "LOADING":
                 self.draw_loading()
-                self.level_data = self.architect.generate_level(self.current_theme, self.active_mode)
+                self.level_data = self.architect.generate_level(self.current_theme, self.active_mode, self.active_difficulty)
                 self.bpm = self.level_data.get('bpm', 120)
                 self.beat_interval = 60 / self.bpm
                 self.intro_timer = pygame.time.get_ticks()
@@ -522,48 +540,74 @@ class RhythmGame:
     def draw_settings(self):
         self.draw_background_ambiance()
         title = self.big_font.render("SYSTEM CONFIG", True, (200, 200, 200))
-        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 80))
+        self.screen.blit(title, (WIDTH//2 - title.get_width()//2, 40))
         
-        y_start = 200
+        curr_y = 120
         # AI Model
         model_title = self.font.render("[AI MODEL - PRESS 1 TO CYCLE]", True, (150, 150, 150))
-        self.screen.blit(model_title, (WIDTH//2 - model_title.get_width()//2, y_start))
+        self.screen.blit(model_title, (WIDTH//2 - model_title.get_width()//2, curr_y))
+        curr_y += 35
         
         models = self.architect.available_models if self.architect.available_models else ["Searching..."]
-        for i, mid in enumerate(models):
+        for i, mid in enumerate(models[:5]): 
             is_active = (self.architect.model == mid)
             color = (0, 255, 150) if is_active else (80, 80, 80)
             prefix_str = ">> " if is_active else "   "
             txt = self.font.render(prefix_str + mid, True, color)
-            self.screen.blit(txt, (WIDTH//2 - 150, y_start + 50 + i*35))
+            self.screen.blit(txt, (WIDTH//2 - 150, curr_y))
+            curr_y += 25
+        
+        curr_y += 40
+
+        # Difficulty
+        diff_title = self.font.render("[DIFFICULTY - PRESS D]", True, (150, 150, 150))
+        self.screen.blit(diff_title, (WIDTH//2 - diff_title.get_width()//2, curr_y))
+        curr_y += 40
+        
+        diff_spacing = 150
+        total_w = len(self.difficulties) * diff_spacing
+        start_x = WIDTH // 2 - total_w // 2
+        for i, d in enumerate(self.difficulties):
+            is_active = (self.active_difficulty == d)
+            color = (0, 200, 255) if is_active else (80, 80, 80)
+            txt = self.font.render(d, True, color)
+            x_pos = start_x + (i * diff_spacing) + (diff_spacing // 2 - txt.get_width() // 2)
+            if is_active:
+                pygame.draw.rect(self.screen, color, (x_pos - 10, curr_y - 5, txt.get_width() + 20, 35), 1)
+            self.screen.blit(txt, (x_pos, curr_y))
+            
+        curr_y += 80
 
         # Game Mode
-        mode_y = HEIGHT - 200
         mode_title = self.font.render("[GAME MODE - PRESS M]", True, (150, 150, 150))
-        self.screen.blit(mode_title, (WIDTH//2 - mode_title.get_width()//2, mode_y))
+        self.screen.blit(mode_title, (WIDTH//2 - mode_title.get_width()//2, curr_y))
+        curr_y += 40
         
+        mode_spacing = 150
+        total_w_m = len(self.modes) * mode_spacing
+        start_x_m = WIDTH // 2 - total_w_m // 2
         for i, m in enumerate(self.modes):
             is_active = (self.active_mode == m)
             color = (255, 100, 255) if is_active else (80, 80, 80)
             txt = self.font.render(m, True, color)
-            spacing = 150
-            x_pos = WIDTH//2 - (len(self.modes)*spacing)//2 + i*spacing + spacing//4
+            x_pos = start_x_m + (i * mode_spacing) + (mode_spacing // 2 - txt.get_width() // 2)
             if is_active:
-                pygame.draw.rect(self.screen, color, (x_pos - 10, mode_y + 45, txt.get_width() + 20, 30), 1)
-            self.screen.blit(txt, (x_pos, mode_y + 50))
+                pygame.draw.rect(self.screen, color, (x_pos - 10, curr_y - 5, txt.get_width() + 20, 35), 1)
+            self.screen.blit(txt, (x_pos, curr_y))
+
+        curr_y += 80
 
         # Scroll Speed
         if self.active_mode != "OSU":
-            speed_y = mode_y - 80
             speed_title = self.font.render(f"[SCROLL SPEED - PRESS S]: {self.user_speed}", True, (255, 200, 100))
-            self.screen.blit(speed_title, (WIDTH//2 - speed_title.get_width()//2, speed_y))
-            # Speed bar
+            self.screen.blit(speed_title, (WIDTH//2 - speed_title.get_width()//2, curr_y))
+            curr_y += 35
             bar_w = 300
-            pygame.draw.rect(self.screen, (40, 40, 40), (WIDTH//2 - bar_w//2, speed_y + 35, bar_w, 10))
-            pygame.draw.rect(self.screen, (255, 200, 100), (WIDTH//2 - bar_w//2, speed_y + 35, int((self.user_speed/12) * bar_w), 10))
+            pygame.draw.rect(self.screen, (40, 40, 40), (WIDTH//2 - bar_w//2, curr_y, bar_w, 15))
+            pygame.draw.rect(self.screen, (255, 200, 100), (WIDTH//2 - bar_w//2, curr_y, int((self.user_speed/12) * bar_w), 15))
 
         hint = self.font.render("ESC TO RETURN", True, (100, 100, 100))
-        self.screen.blit(hint, (WIDTH//2 - hint.get_width()//2, HEIGHT - 60))
+        self.screen.blit(hint, (WIDTH//2 - hint.get_width()//2, HEIGHT - 50))
 
     def draw_death(self):
         self.draw_background_ambiance()
